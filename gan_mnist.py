@@ -1,8 +1,7 @@
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
+from plotter import Plotter
 import time
 
 mnist = input_data.read_data_sets('MNIST_data/', one_hot=True)
@@ -58,26 +57,11 @@ G_solver = tf.train.AdamOptimizer().minimize(G_loss, var_list=theta_G)
 def sample_z(m, n):
     return np.random.uniform(-1., 1., size=[m,n])
 
-def plot(samples):
-    gs = gridspec.GridSpec(4, 4)
-    gs.update(wspace=0.05, hspace=0.05)
-
-    for i, sample in enumerate(samples):
-        ax = plt.subplot(gs[i])
-        plt.axis('off')
-        ax.set_xticklabels([])
-        ax.set_yticklabels([])
-        ax.set_aspect('equal')
-        plt.imshow(sample.reshape(28, 28), cmap='Greys_r')
-
 saver = tf.train.Saver()
 with tf.Session() as sess:
-
     chkpt_path = tf.train.latest_checkpoint('./checkpoints')
-
     if chkpt_path:
         saver.restore(sess, chkpt_path)
-        # graph = tf.get_default_graph()
     else:
         init = tf.global_variables_initializer()
         sess.run(init)
@@ -87,22 +71,18 @@ with tf.Session() as sess:
     k = 1
     i = 0
     mb_size = 16
-    fig = plt.figure(figsize=(4, 4))
-    plt.ion()
-    plt.show()
+    plotter = Plotter()
     for iteration in range(n_iterations):
         for step in range(k):
             X_mb, _ = mnist.train.next_batch(mb_size)
-
             _, D_loss_curr = sess.run([D_solver, D_loss], feed_dict={X: X_mb, Z: sample_z(mb_size, Z_dim)})
-            _, G_loss_curr = sess.run([G_solver, G_loss], feed_dict={Z: sample_z(mb_size, Z_dim)})
+        _, G_loss_curr = sess.run([G_solver, G_loss], feed_dict={Z: sample_z(mb_size, Z_dim)})
 
-            if iteration % 200 == 0:
-                samples = sess.run(G_sample, feed_dict={Z: sample_z(mb_size, Z_dim)})
-                plot(samples)
-                # plt.savefig('out/{}.png'
-                #             .format(str(i).zfill(3)), bbox_inches='tight')
-                # i += 1
-                print(iteration)
-                saver.save(sess, './checkpoints/prev_sess')
-                fig.canvas.draw()
+        if iteration % 200 == 0:
+            samples = sess.run(G_sample, feed_dict={Z: sample_z(mb_size, Z_dim)})
+            plotter.plot(samples)
+            # plt.savefig('out/{}.png'
+            #             .format(str(i).zfill(3)), bbox_inches='tight')
+            # i += 1
+            print(iteration)
+            saver.save(sess, './checkpoints/prev_sess')
